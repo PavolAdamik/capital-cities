@@ -9,6 +9,9 @@ You can run this quiz by simply opening the `index.html` file in any modern web 
 
 ## ✨ Features
 
+* **🎮 Two Game Modes**: Choose how you want to play before the game starts:
+    * **🏙️ Capital Mode**: A country name is shown and you type its capital city.
+    * **🚩 Flag Mode**: A country's flag is shown and you type the country's name. Both the country name **and** its capital are accepted as correct answers.
 * **👥 Multiplayer Support**: Play with 1 to 10 players with custom names.
 * **⏱️ Dynamic Timer**: Each turn has a 50-second limit to keep the game fast-paced.
 * **🌍 Continent Filtering**: Practice specific regions (Europe, Asia, Africa, Americas, Oceania) or take on the whole world.
@@ -19,6 +22,7 @@ You can run this quiz by simply opening the `index.html` file in any modern web 
 * **⌨️ PC Optimized**: Supports the `Enter` key for quick answer submission.
 * **📱 Mobile Friendly**: Responsive design that works perfectly on smartphones and tablets.
 * **🔤 Smart Validation**: Automatically ignores accents (diacritics) and case sensitivity (e.g., "Paříž", "pariz", and "PARIZ" are all accepted).
+* **🌐 Slovak & English Names**: In Flag Mode both the Slovak and the English country name are accepted (e.g. "Slovensko" / "Slovenská republika" / "Slovakia", or "Česko" / "Česká republika" / "Czech Republic" / "Czechia").
 
 ---
 
@@ -33,11 +37,12 @@ The project is built using a "Single File" architecture for maximum portability:
 
 ## 📝 How to Use
 
-1.  Download or copy the `index.html` file or copy the https://gistcdn.githack.com/PavolAdamik/a779374fc9b3026f8bc3e28088a44b74/raw/f697d045f02a7c7a2aa325c8280ccc591e0270dd/index.html url
+1.  Download or copy the `index.html` file or open the live version at https://raw.githack.com/PavolAdamik/capital-cities/main/index.html
 2.  Open it in your browser.
-3.  Set the number of players and enter their names.
-4.  Select your preferred continent.
-5.  Start the game and have fun!
+3.  Pick a game mode (Capital Mode or Flag Mode).
+4.  Set the number of players and enter their names.
+5.  Select your preferred continent.
+6.  Start the game and have fun!
 
 ---
 
@@ -47,7 +52,11 @@ The project is built using a "Single File" architecture for maximum portability:
 Interaktívna webová aplikácia pre súťaživé učenie geografie.
 
 **Hlavné funkcie:**
-* **Multiplayer**: Podpora až pre 20 hráčov s vlastnými menami.
+* **Dva herné režimy**: Pred štartom si vyberáš, ako chceš hrať:
+    * **🏙️ Hlavné mesto**: Zobrazí sa názov štátu a ty píšeš jeho hlavné mesto.
+    * **🚩 Vlajka → štát**: Zobrazí sa vlajka a ty píšeš názov štátu. Ako správna sa uzná **aj** názov štátu **aj** jeho hlavné mesto.
+* **Slovenské aj anglické názvy**: Vo vlajkovom režime sa uzná slovenský aj anglický názov štátu (napr. „Slovensko" / „Slovenská republika" / „Slovakia", alebo „Česko" / „Česká republika" / „Czech Republic" / „Czechia").
+* **Multiplayer**: Podpora pre 1 až 10 hráčov s vlastnými menami.
 * **Časovač**: 50 sekúnd na každú otázku.
 * **Dynamické čakanie**: Po správnej odpovedi sa čaká 2s, po nesprávnej 5s (na prečítanie správneho výsledku).
 * **Pauza**: Možnosť kedykoľvek zastaviť hru a časovač.

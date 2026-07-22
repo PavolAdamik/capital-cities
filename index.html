@@ -42,6 +42,8 @@
             position: relative;
         }
 
+        label { display: block; text-align: left; margin-bottom: 6px; color: var(--text-muted); font-size: 14px; }
+
         input[type="number"], input[type="text"], select {
             width: 100%;
             padding: 12px;
@@ -51,6 +53,17 @@
             background: #000;
             color: #fff;
             font-size: 16px;
+        }
+
+        select {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            padding-right: 40px;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%23ffffff' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            cursor: pointer;
         }
 
         .player-inputs {
@@ -80,6 +93,28 @@
         .btn-secondary { background-color: #333; color: #fff; }
         .btn-pause { background-color: var(--warning); color: #000; width: auto; padding: 5px 12px; font-size: 14px; margin: 0; }
 
+        /* Prepínač herného režimu */
+        .mode-switch { display: flex; gap: 10px; margin-bottom: 15px; }
+        .mode-option {
+            flex: 1;
+            padding: 14px 10px;
+            border: 2px solid #333;
+            border-radius: 12px;
+            background: #000;
+            color: var(--text-muted);
+            cursor: pointer;
+            font-size: 15px;
+            font-weight: bold;
+            transition: all 0.15s ease;
+            text-align: center;
+        }
+        .mode-option .mode-icon { font-size: 22px; display: block; margin-bottom: 4px; }
+        .mode-option.selected {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(187, 134, 252, 0.12);
+        }
+
         .header {
             display: flex;
             justify-content: space-between;
@@ -91,6 +126,19 @@
         }
 
         .country-display { font-size: 28px; font-weight: bold; margin: 20px 0; color: #fff; }
+
+        .flag-display {
+            display: none;
+            width: 280px;
+            max-width: 100%;
+            height: auto;
+            aspect-ratio: 3 / 2;
+            object-fit: cover;
+            border-radius: 10px;
+            margin: 20px auto;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.6);
+            background: #2a2a2a;
+        }
 
         .feedback {
             margin-top: 15px;
@@ -133,6 +181,18 @@
     <div id="setup-screen" class="screen active">
         <h1>🌍 Svetový Kvíz</h1>
         <div class="card">
+            <label>Herný režim:</label>
+            <div class="mode-switch">
+                <div class="mode-option selected" id="mode-capital" onclick="selectMode('capital')">
+                    <span class="mode-icon">🏙️</span>
+                    Hlavné mesto k štátu
+                </div>
+                <div class="mode-option" id="mode-flag" onclick="selectMode('flag')">
+                    <span class="mode-icon">🚩</span>
+                    Vlajka → názov štátu
+                </div>
+            </div>
+
             <label>Počet hráčov:</label>
             <input type="number" id="playerCount" value="2" min="1" max="10" oninput="generatePlayerInputs()">
             <div id="playerNamesContainer" class="player-inputs"></div>
@@ -162,6 +222,7 @@
             <div id="pause-overlay">HRA POZASTAVENÁ</div>
             <div id="cardsLeft" style="font-size:12px; color:var(--text-muted)"></div>
             <div id="game-content">
+                <img id="flagImg" class="flag-display" alt="Vlajka">
                 <div class="country-display" id="countryName">...</div>
                 <input type="text" id="capitalInput" placeholder="Napíš hlavné mesto..." autocomplete="off">
                 <div id="actionButtons" class="action-buttons">
@@ -181,215 +242,223 @@
     </div>
 
 <script>
-// --- KOMPLETNÁ DATABÁZA (ODPORÚČANÁ) ---
+// --- KOMPLETNÁ DATABÁZA ---
+// code = ISO 3166-1 alpha-2 (pre vlajku), en = anglický názov, alt = ďalšie uznávané názvy
 const allCountries = [
     // EURÓPA
-    { country: "Albánsko", capital: "Tirana", continent: "Europe" },
-    { country: "Andorra", capital: "Andorra la Vella", continent: "Europe" },
-    { country: "Belgicko", capital: "Brusel", continent: "Europe" },
-    { country: "Bielorusko", capital: "Minsk", continent: "Europe" },
-    { country: "Bosna a Hercegovina", capital: "Sarajevo", continent: "Europe" },
-    { country: "Bulharsko", capital: "Sofia", continent: "Europe" },
-    { country: "Cyprus", capital: "Nikózia", continent: "Europe" },
-    { country: "Česko", capital: "Praha", continent: "Europe" },
-    { country: "Čierna Hora", capital: "Podgorica", continent: "Europe" },
-    { country: "Dánsko", capital: "Kodaň", continent: "Europe" },
-    { country: "Estónsko", capital: "Tallinn", continent: "Europe" },
-    { country: "Fínsko", capital: "Helsinki", continent: "Europe" },
-    { country: "Francúzsko", capital: "Paríž", continent: "Europe" },
-    { country: "Grécko", capital: "Atény", continent: "Europe" },
-    { country: "Holandsko", capital: "Amsterdam", continent: "Europe" },
-    { country: "Chorvátsko", capital: "Záhreb", continent: "Europe" },
-    { country: "Írsko", capital: "Dublin", continent: "Europe" },
-    { country: "Island", capital: "Reykjavík", continent: "Europe" },
-    { country: "Lichtenštajnsko", capital: "Vaduz", continent: "Europe" },
-    { country: "Litva", capital: "Vilnius", continent: "Europe" },
-    { country: "Lotyšsko", capital: "Riga", continent: "Europe" },
-    { country: "Luxembursko", capital: "Luxemburg", continent: "Europe" },
-    { country: "Maďarsko", capital: "Budapešť", continent: "Europe" },
-    { country: "Malta", capital: "Valletta", continent: "Europe" },
-    { country: "Moldavsko", capital: "Kišiňov", continent: "Europe" },
-    { country: "Monako", capital: "Monako", continent: "Europe" },
-    { country: "Nemecko", capital: "Berlín", continent: "Europe" },
-    { country: "Nórsko", capital: "Oslo", continent: "Europe" },
-    { country: "Poľsko", capital: "Varšava", continent: "Europe" },
-    { country: "Portugalsko", capital: "Lisabon", continent: "Europe" },
-    { country: "Rakúsko", capital: "Viedeň", continent: "Europe" },
-    { country: "Rumunsko", capital: "Bukurešť", continent: "Europe" },
-    { country: "Rusko", capital: "Moskva", continent: "Europe" },
-    { country: "San Maríno", capital: "San Maríno", continent: "Europe" },
-    { country: "Severné Macedónsko", capital: "Skopje", continent: "Europe" },
-    { country: "Slovensko", capital: "Bratislava", continent: "Europe" },
-    { country: "Slovinsko", capital: "Ľubľana", continent: "Europe" },
-    { country: "Spojené kráľovstvo", capital: "Londýn", continent: "Europe" },
-    { country: "Srbsko", capital: "Belehrad", continent: "Europe" },
-    { country: "Španielsko", capital: "Madrid", continent: "Europe" },
-    { country: "Švajčiarsko", capital: "Bern", continent: "Europe" },
-    { country: "Švédsko", capital: "Štokholm", continent: "Europe" },
-    { country: "Taliansko", capital: "Rím", continent: "Europe" },
-    { country: "Ukrajina", capital: "Kyjev", continent: "Europe" },
-    { country: "Vatikán", capital: "Vatikán", continent: "Europe" },
+    { country: "Albánsko", capital: "Tirana", continent: "Europe", code: "al", en: "Albania" },
+    { country: "Andorra", capital: "Andorra la Vella", continent: "Europe", code: "ad", en: "Andorra" },
+    { country: "Belgicko", capital: "Brusel", continent: "Europe", code: "be", en: "Belgium" },
+    { country: "Bielorusko", capital: "Minsk", continent: "Europe", code: "by", en: "Belarus" },
+    { country: "Bosna a Hercegovina", capital: "Sarajevo", continent: "Europe", code: "ba", en: "Bosnia and Herzegovina" },
+    { country: "Bulharsko", capital: "Sofia", continent: "Europe", code: "bg", en: "Bulgaria" },
+    { country: "Cyprus", capital: "Nikózia", continent: "Europe", code: "cy", en: "Cyprus" },
+    { country: "Česko", capital: "Praha", continent: "Europe", code: "cz", en: "Czech Republic", alt: ["Czechia", "Česká republika"] },
+    { country: "Čierna Hora", capital: "Podgorica", continent: "Europe", code: "me", en: "Montenegro" },
+    { country: "Dánsko", capital: "Kodaň", continent: "Europe", code: "dk", en: "Denmark" },
+    { country: "Estónsko", capital: "Tallinn", continent: "Europe", code: "ee", en: "Estonia" },
+    { country: "Fínsko", capital: "Helsinki", continent: "Europe", code: "fi", en: "Finland" },
+    { country: "Francúzsko", capital: "Paríž", continent: "Europe", code: "fr", en: "France" },
+    { country: "Grécko", capital: "Atény", continent: "Europe", code: "gr", en: "Greece" },
+    { country: "Holandsko", capital: "Amsterdam", continent: "Europe", code: "nl", en: "Netherlands", alt: ["Holland"] },
+    { country: "Chorvátsko", capital: "Záhreb", continent: "Europe", code: "hr", en: "Croatia" },
+    { country: "Írsko", capital: "Dublin", continent: "Europe", code: "ie", en: "Ireland" },
+    { country: "Island", capital: "Reykjavík", continent: "Europe", code: "is", en: "Iceland" },
+    { country: "Lichtenštajnsko", capital: "Vaduz", continent: "Europe", code: "li", en: "Liechtenstein" },
+    { country: "Litva", capital: "Vilnius", continent: "Europe", code: "lt", en: "Lithuania" },
+    { country: "Lotyšsko", capital: "Riga", continent: "Europe", code: "lv", en: "Latvia" },
+    { country: "Luxembursko", capital: "Luxemburg", continent: "Europe", code: "lu", en: "Luxembourg" },
+    { country: "Maďarsko", capital: "Budapešť", continent: "Europe", code: "hu", en: "Hungary" },
+    { country: "Malta", capital: "Valletta", continent: "Europe", code: "mt", en: "Malta" },
+    { country: "Moldavsko", capital: "Kišiňov", continent: "Europe", code: "md", en: "Moldova" },
+    { country: "Monako", capital: "Monako", continent: "Europe", code: "mc", en: "Monaco" },
+    { country: "Nemecko", capital: "Berlín", continent: "Europe", code: "de", en: "Germany" },
+    { country: "Nórsko", capital: "Oslo", continent: "Europe", code: "no", en: "Norway" },
+    { country: "Poľsko", capital: "Varšava", continent: "Europe", code: "pl", en: "Poland" },
+    { country: "Portugalsko", capital: "Lisabon", continent: "Europe", code: "pt", en: "Portugal" },
+    { country: "Rakúsko", capital: "Viedeň", continent: "Europe", code: "at", en: "Austria" },
+    { country: "Rumunsko", capital: "Bukurešť", continent: "Europe", code: "ro", en: "Romania" },
+    { country: "Rusko", capital: "Moskva", continent: "Europe", code: "ru", en: "Russia", alt: ["Russian Federation"] },
+    { country: "San Maríno", capital: "San Maríno", continent: "Europe", code: "sm", en: "San Marino" },
+    { country: "Severné Macedónsko", capital: "Skopje", continent: "Europe", code: "mk", en: "North Macedonia", alt: ["Macedonia"] },
+    { country: "Slovensko", capital: "Bratislava", continent: "Europe", code: "sk", en: "Slovakia", alt: ["Slovenská republika", "Slovak Republic"] },
+    { country: "Slovinsko", capital: "Ľubľana", continent: "Europe", code: "si", en: "Slovenia" },
+    { country: "Spojené kráľovstvo", capital: "Londýn", continent: "Europe", code: "gb", en: "United Kingdom", alt: ["UK", "Great Britain", "Britain", "England"] },
+    { country: "Srbsko", capital: "Belehrad", continent: "Europe", code: "rs", en: "Serbia" },
+    { country: "Španielsko", capital: "Madrid", continent: "Europe", code: "es", en: "Spain" },
+    { country: "Švajčiarsko", capital: "Bern", continent: "Europe", code: "ch", en: "Switzerland" },
+    { country: "Švédsko", capital: "Štokholm", continent: "Europe", code: "se", en: "Sweden" },
+    { country: "Taliansko", capital: "Rím", continent: "Europe", code: "it", en: "Italy" },
+    { country: "Ukrajina", capital: "Kyjev", continent: "Europe", code: "ua", en: "Ukraine" },
+    { country: "Vatikán", capital: "Vatikán", continent: "Europe", code: "va", en: "Vatican City", alt: ["Vatican"] },
 
     // ÁZIA
-    { country: "Afganistan", capital: "Kábul", continent: "Asia" },
-    { country: "Arménsko", capital: "Jerevan", continent: "Asia" },
-    { country: "Azerbajdžan", capital: "Baku", continent: "Asia" },
-    { country: "Bahrajn", capital: "Manáma", continent: "Asia" },
-    { country: "Bangladéš", capital: "Dháka", continent: "Asia" },
-    { country: "Bhután", capital: "Thimphu", continent: "Asia" },
-    { country: "Brunej", capital: "Bandar Seri Begawan", continent: "Asia" },
-    { country: "Čína", capital: "Peking", continent: "Asia" },
-    { country: "Filipíny", capital: "Manila", continent: "Asia" },
-    { country: "Gruzínsko", capital: "Tbilisi", continent: "Asia" },
-    { country: "India", capital: "Naí Dillí", continent: "Asia" },
-    { country: "Indonézia", capital: "Jakarta", continent: "Asia" },
-    { country: "Irak", capital: "Bagdad", continent: "Asia" },
-    { country: "Irán", capital: "Teherán", continent: "Asia" },
-    { country: "Izrael", capital: "Jeruzalem", continent: "Asia" },
-    { country: "Japonsko", capital: "Tokio", continent: "Asia" },
-    { country: "Jemen", capital: "Saná", continent: "Asia" },
-    { country: "Jordánsko", capital: "Ammán", continent: "Asia" },
-    { country: "Južná Kórea", capital: "Soul", continent: "Asia" },
-    { country: "Kambodža", capital: "Phnom Pénh", continent: "Asia" },
-    { country: "Katar", capital: "Dauha", continent: "Asia" },
-    { country: "Kazachstan", capital: "Astana", continent: "Asia" },
-    { country: "Kirgizsko", capital: "Biškek", continent: "Asia" },
-    { country: "Kuvajt", capital: "Kuvajt", continent: "Asia" },
-    { country: "Laos", capital: "Vientian", continent: "Asia" },
-    { country: "Libanon", capital: "Bejrút", continent: "Asia" },
-    { country: "Malajzia", capital: "Kuala Lumpur", continent: "Asia" },
-    { country: "Maldivy", capital: "Malé", continent: "Asia" },
-    { country: "Mjanmarsko", capital: "Nepjito", continent: "Asia" },
-    { country: "Mongolsko", capital: "Ulanbátar", continent: "Asia" },
-    { country: "Nepál", capital: "Káthmandu", continent: "Asia" },
-    { country: "Omán", capital: "Maskat", continent: "Asia" },
-    { country: "Pakistan", capital: "Islamabad", continent: "Asia" },
-    { country: "Palestína", capital: "Ramalláh", continent: "Asia" },
-    { country: "Saudská Arábia", capital: "Rijád", continent: "Asia" },
-    { country: "Severná Kórea", capital: "Pchjongjang", continent: "Asia" },
-    { country: "Singapur", capital: "Singapur", continent: "Asia" },
-    { country: "Spojené arabské emiráty", capital: "Abú Zabí", continent: "Asia" },
-    { country: "Srí Lanka", capital: "Šrí Džajavardanapura Kótte", continent: "Asia" },
-    { country: "Sýria", capital: "Damask", continent: "Asia" },
-    { country: "Tadžikistan", capital: "Dušanbe", continent: "Asia" },
-    { country: "Thajsko", capital: "Bangkok", continent: "Asia" },
-    { country: "Turecko", capital: "Ankara", continent: "Asia" },
-    { country: "Turkménsko", capital: "Ašchabad", continent: "Asia" },
-    { country: "Uzbekistan", capital: "Taškent", continent: "Asia" },
-    { country: "Východný Timor", capital: "Dili", continent: "Asia" },
+    { country: "Afganistan", capital: "Kábul", continent: "Asia", code: "af", en: "Afghanistan" },
+    { country: "Arménsko", capital: "Jerevan", continent: "Asia", code: "am", en: "Armenia" },
+    { country: "Azerbajdžan", capital: "Baku", continent: "Asia", code: "az", en: "Azerbaijan" },
+    { country: "Bahrajn", capital: "Manáma", continent: "Asia", code: "bh", en: "Bahrain" },
+    { country: "Bangladéš", capital: "Dháka", continent: "Asia", code: "bd", en: "Bangladesh" },
+    { country: "Bhután", capital: "Thimphu", continent: "Asia", code: "bt", en: "Bhutan" },
+    { country: "Brunej", capital: "Bandar Seri Begawan", continent: "Asia", code: "bn", en: "Brunei" },
+    { country: "Čína", capital: "Peking", continent: "Asia", code: "cn", en: "China" },
+    { country: "Filipíny", capital: "Manila", continent: "Asia", code: "ph", en: "Philippines" },
+    { country: "Gruzínsko", capital: "Tbilisi", continent: "Asia", code: "ge", en: "Georgia" },
+    { country: "India", capital: "Naí Dillí", continent: "Asia", code: "in", en: "India" },
+    { country: "Indonézia", capital: "Jakarta", continent: "Asia", code: "id", en: "Indonesia" },
+    { country: "Irak", capital: "Bagdad", continent: "Asia", code: "iq", en: "Iraq" },
+    { country: "Irán", capital: "Teherán", continent: "Asia", code: "ir", en: "Iran" },
+    { country: "Izrael", capital: "Jeruzalem", continent: "Asia", code: "il", en: "Israel" },
+    { country: "Japonsko", capital: "Tokio", continent: "Asia", code: "jp", en: "Japan" },
+    { country: "Jemen", capital: "Saná", continent: "Asia", code: "ye", en: "Yemen" },
+    { country: "Jordánsko", capital: "Ammán", continent: "Asia", code: "jo", en: "Jordan" },
+    { country: "Južná Kórea", capital: "Soul", continent: "Asia", code: "kr", en: "South Korea" },
+    { country: "Kambodža", capital: "Phnom Pénh", continent: "Asia", code: "kh", en: "Cambodia" },
+    { country: "Katar", capital: "Dauha", continent: "Asia", code: "qa", en: "Qatar" },
+    { country: "Kazachstan", capital: "Astana", continent: "Asia", code: "kz", en: "Kazakhstan" },
+    { country: "Kirgizsko", capital: "Biškek", continent: "Asia", code: "kg", en: "Kyrgyzstan" },
+    { country: "Kuvajt", capital: "Kuvajt", continent: "Asia", code: "kw", en: "Kuwait" },
+    { country: "Laos", capital: "Vientian", continent: "Asia", code: "la", en: "Laos" },
+    { country: "Libanon", capital: "Bejrút", continent: "Asia", code: "lb", en: "Lebanon" },
+    { country: "Malajzia", capital: "Kuala Lumpur", continent: "Asia", code: "my", en: "Malaysia" },
+    { country: "Maldivy", capital: "Malé", continent: "Asia", code: "mv", en: "Maldives" },
+    { country: "Mjanmarsko", capital: "Nepjito", continent: "Asia", code: "mm", en: "Myanmar", alt: ["Burma"] },
+    { country: "Mongolsko", capital: "Ulanbátar", continent: "Asia", code: "mn", en: "Mongolia" },
+    { country: "Nepál", capital: "Káthmandu", continent: "Asia", code: "np", en: "Nepal" },
+    { country: "Omán", capital: "Maskat", continent: "Asia", code: "om", en: "Oman" },
+    { country: "Pakistan", capital: "Islamabad", continent: "Asia", code: "pk", en: "Pakistan" },
+    { country: "Palestína", capital: "Ramalláh", continent: "Asia", code: "ps", en: "Palestine" },
+    { country: "Saudská Arábia", capital: "Rijád", continent: "Asia", code: "sa", en: "Saudi Arabia" },
+    { country: "Severná Kórea", capital: "Pchjongjang", continent: "Asia", code: "kp", en: "North Korea" },
+    { country: "Singapur", capital: "Singapur", continent: "Asia", code: "sg", en: "Singapore" },
+    { country: "Spojené arabské emiráty", capital: "Abú Zabí", continent: "Asia", code: "ae", en: "United Arab Emirates", alt: ["UAE"] },
+    { country: "Srí Lanka", capital: "Šrí Džajavardanapura Kótte", continent: "Asia", code: "lk", en: "Sri Lanka" },
+    { country: "Sýria", capital: "Damask", continent: "Asia", code: "sy", en: "Syria" },
+    { country: "Tadžikistan", capital: "Dušanbe", continent: "Asia", code: "tj", en: "Tajikistan" },
+    { country: "Thajsko", capital: "Bangkok", continent: "Asia", code: "th", en: "Thailand" },
+    { country: "Turecko", capital: "Ankara", continent: "Asia", code: "tr", en: "Turkey", alt: ["Türkiye"] },
+    { country: "Turkménsko", capital: "Ašchabad", continent: "Asia", code: "tm", en: "Turkmenistan" },
+    { country: "Uzbekistan", capital: "Taškent", continent: "Asia", code: "uz", en: "Uzbekistan" },
+    { country: "Východný Timor", capital: "Dili", continent: "Asia", code: "tl", en: "East Timor", alt: ["Timor-Leste"] },
 
     // AFRIKA
-    { country: "Alžírsko", capital: "Alžír", continent: "Africa" },
-    { country: "Angola", capital: "Luanda", continent: "Africa" },
-    { country: "Benin", capital: "Porto-Novo", continent: "Africa" },
-    { country: "Botswana", capital: "Gaborone", continent: "Africa" },
-    { country: "Burkina Faso", capital: "Ouagadougou", continent: "Africa" },
-    { country: "Burundi", capital: "Gitega", continent: "Africa" },
-    { country: "Čad", capital: "N'Djamena", continent: "Africa" },
-    { country: "Džibutsko", capital: "Džibuti", continent: "Africa" },
-    { country: "Egypt", capital: "Káhira", continent: "Africa" },
-    { country: "Eritrea", capital: "Asmara", continent: "Africa" },
-    { country: "Eswatini (Svazijsko)", capital: "Mbabane", continent: "Africa" },
-    { country: "Etiópia", capital: "Addis Abeba", continent: "Africa" },
-    { country: "Gabon", capital: "Libreville", continent: "Africa" },
-    { country: "Gambia", capital: "Banjul", continent: "Africa" },
-    { country: "Ghana", capital: "Akkra", continent: "Africa" },
-    { country: "Guinea", capital: "Konakry", continent: "Africa" },
-    { country: "Guinea-Bissau", capital: "Bissau", continent: "Africa" },
-    { country: "Južná Afrika", capital: "Pretória", continent: "Africa" },
-    { country: "Južný Sudán", capital: "Džuba", continent: "Africa" },
-    { country: "Kamerun", capital: "Yaoundé", continent: "Africa" },
-    { country: "Kapverdy", capital: "Praia", continent: "Africa" },
-    { country: "Keňa", capital: "Nairobi", continent: "Africa" },
-    { country: "Komory", capital: "Moroni", continent: "Africa" },
-    { country: "Kongo", capital: "Brazzaville", continent: "Africa" },
-    { country: "Konžská demokratická republika", capital: "Kinshasa", continent: "Africa" },
-    { country: "Lesotho", capital: "Maseru", continent: "Africa" },
-    { country: "Libéria", capital: "Monrovia", continent: "Africa" },
-    { country: "Líbya", capital: "Tripolis", continent: "Africa" },
-    { country: "Madagaskar", capital: "Antananarivo", continent: "Africa" },
-    { country: "Malawi", capital: "Lilongwe", continent: "Africa" },
-    { country: "Mali", capital: "Bamako", continent: "Africa" },
-    { country: "Maroko", capital: "Rabat", continent: "Africa" },
-    { country: "Maurícius", capital: "Port Louis", continent: "Africa" },
-    { country: "Mauritánia", capital: "Nuakšott", continent: "Africa" },
-    { country: "Mozambik", capital: "Maputo", continent: "Africa" },
-    { country: "Namíbia", capital: "Windhoek", continent: "Africa" },
-    { country: "Niger", capital: "Niamey", continent: "Africa" },
-    { country: "Nigéria", capital: "Abuja", continent: "Africa" },
-    { country: "Pobrežie Slonoviny", capital: "Yamoussoukro", continent: "Africa" },
-    { country: "Rovníková Guinea", capital: "Malabo", continent: "Africa" },
-    { country: "Rwanda", capital: "Kigali", continent: "Africa" },
-    { country: "Senegal", capital: "Dakar", continent: "Africa" },
-    { country: "Seychely", capital: "Victoria", continent: "Africa" },
-    { country: "Sierra Leone", capital: "Freetown", continent: "Africa" },
-    { country: "Somálsko", capital: "Mogadišo", continent: "Africa" },
-    { country: "Stredoafrická republika", capital: "Bangui", continent: "Africa" },
-    { country: "Sudán", capital: "Chartúm", continent: "Africa" },
-    { country: "Svätý Tomáš a Princov ostrov", capital: "Svätý Tomáš", continent: "Africa" },
-    { country: "Tanzánia", capital: "Dodoma", continent: "Africa" },
-    { country: "Togo", capital: "Lomé", continent: "Africa" },
-    { country: "Tunisko", capital: "Tunis", continent: "Africa" },
-    { country: "Uganda", capital: "Kampala", continent: "Africa" },
-    { country: "Zambia", capital: "Lusaka", continent: "Africa" },
-    { country: "Zimbabwe", capital: "Harare", continent: "Africa" },
+    { country: "Alžírsko", capital: "Alžír", continent: "Africa", code: "dz", en: "Algeria" },
+    { country: "Angola", capital: "Luanda", continent: "Africa", code: "ao", en: "Angola" },
+    { country: "Benin", capital: "Porto-Novo", continent: "Africa", code: "bj", en: "Benin" },
+    { country: "Botswana", capital: "Gaborone", continent: "Africa", code: "bw", en: "Botswana" },
+    { country: "Burkina Faso", capital: "Ouagadougou", continent: "Africa", code: "bf", en: "Burkina Faso" },
+    { country: "Burundi", capital: "Gitega", continent: "Africa", code: "bi", en: "Burundi" },
+    { country: "Čad", capital: "N'Djamena", continent: "Africa", code: "td", en: "Chad" },
+    { country: "Džibutsko", capital: "Džibuti", continent: "Africa", code: "dj", en: "Djibouti" },
+    { country: "Egypt", capital: "Káhira", continent: "Africa", code: "eg", en: "Egypt" },
+    { country: "Eritrea", capital: "Asmara", continent: "Africa", code: "er", en: "Eritrea" },
+    { country: "Eswatini (Svazijsko)", capital: "Mbabane", continent: "Africa", code: "sz", en: "Eswatini", alt: ["Swaziland"] },
+    { country: "Etiópia", capital: "Addis Abeba", continent: "Africa", code: "et", en: "Ethiopia" },
+    { country: "Gabon", capital: "Libreville", continent: "Africa", code: "ga", en: "Gabon" },
+    { country: "Gambia", capital: "Banjul", continent: "Africa", code: "gm", en: "Gambia" },
+    { country: "Ghana", capital: "Akkra", continent: "Africa", code: "gh", en: "Ghana" },
+    { country: "Guinea", capital: "Konakry", continent: "Africa", code: "gn", en: "Guinea" },
+    { country: "Guinea-Bissau", capital: "Bissau", continent: "Africa", code: "gw", en: "Guinea-Bissau" },
+    { country: "Južná Afrika", capital: "Pretória", continent: "Africa", code: "za", en: "South Africa" },
+    { country: "Južný Sudán", capital: "Džuba", continent: "Africa", code: "ss", en: "South Sudan" },
+    { country: "Kamerun", capital: "Yaoundé", continent: "Africa", code: "cm", en: "Cameroon" },
+    { country: "Kapverdy", capital: "Praia", continent: "Africa", code: "cv", en: "Cape Verde", alt: ["Cabo Verde"] },
+    { country: "Keňa", capital: "Nairobi", continent: "Africa", code: "ke", en: "Kenya" },
+    { country: "Komory", capital: "Moroni", continent: "Africa", code: "km", en: "Comoros" },
+    { country: "Kongo", capital: "Brazzaville", continent: "Africa", code: "cg", en: "Congo", alt: ["Republic of the Congo"] },
+    { country: "Konžská demokratická republika", capital: "Kinshasa", continent: "Africa", code: "cd", en: "Democratic Republic of the Congo", alt: ["DR Congo", "DRC"] },
+    { country: "Lesotho", capital: "Maseru", continent: "Africa", code: "ls", en: "Lesotho" },
+    { country: "Libéria", capital: "Monrovia", continent: "Africa", code: "lr", en: "Liberia" },
+    { country: "Líbya", capital: "Tripolis", continent: "Africa", code: "ly", en: "Libya" },
+    { country: "Madagaskar", capital: "Antananarivo", continent: "Africa", code: "mg", en: "Madagascar" },
+    { country: "Malawi", capital: "Lilongwe", continent: "Africa", code: "mw", en: "Malawi" },
+    { country: "Mali", capital: "Bamako", continent: "Africa", code: "ml", en: "Mali" },
+    { country: "Maroko", capital: "Rabat", continent: "Africa", code: "ma", en: "Morocco" },
+    { country: "Maurícius", capital: "Port Louis", continent: "Africa", code: "mu", en: "Mauritius" },
+    { country: "Mauritánia", capital: "Nuakšott", continent: "Africa", code: "mr", en: "Mauritania" },
+    { country: "Mozambik", capital: "Maputo", continent: "Africa", code: "mz", en: "Mozambique" },
+    { country: "Namíbia", capital: "Windhoek", continent: "Africa", code: "na", en: "Namibia" },
+    { country: "Niger", capital: "Niamey", continent: "Africa", code: "ne", en: "Niger" },
+    { country: "Nigéria", capital: "Abuja", continent: "Africa", code: "ng", en: "Nigeria" },
+    { country: "Pobrežie Slonoviny", capital: "Yamoussoukro", continent: "Africa", code: "ci", en: "Ivory Coast", alt: ["Cote d'Ivoire"] },
+    { country: "Rovníková Guinea", capital: "Malabo", continent: "Africa", code: "gq", en: "Equatorial Guinea" },
+    { country: "Rwanda", capital: "Kigali", continent: "Africa", code: "rw", en: "Rwanda" },
+    { country: "Senegal", capital: "Dakar", continent: "Africa", code: "sn", en: "Senegal" },
+    { country: "Seychely", capital: "Victoria", continent: "Africa", code: "sc", en: "Seychelles" },
+    { country: "Sierra Leone", capital: "Freetown", continent: "Africa", code: "sl", en: "Sierra Leone" },
+    { country: "Somálsko", capital: "Mogadišo", continent: "Africa", code: "so", en: "Somalia" },
+    { country: "Stredoafrická republika", capital: "Bangui", continent: "Africa", code: "cf", en: "Central African Republic" },
+    { country: "Sudán", capital: "Chartúm", continent: "Africa", code: "sd", en: "Sudan" },
+    { country: "Svätý Tomáš a Princov ostrov", capital: "Svätý Tomáš", continent: "Africa", code: "st", en: "Sao Tome and Principe" },
+    { country: "Tanzánia", capital: "Dodoma", continent: "Africa", code: "tz", en: "Tanzania" },
+    { country: "Togo", capital: "Lomé", continent: "Africa", code: "tg", en: "Togo" },
+    { country: "Tunisko", capital: "Tunis", continent: "Africa", code: "tn", en: "Tunisia" },
+    { country: "Uganda", capital: "Kampala", continent: "Africa", code: "ug", en: "Uganda" },
+    { country: "Zambia", capital: "Lusaka", continent: "Africa", code: "zm", en: "Zambia" },
+    { country: "Zimbabwe", capital: "Harare", continent: "Africa", code: "zw", en: "Zimbabwe" },
 
     // AMERIKY
-    { country: "Antigua a Barbuda", capital: "Saint John's", continent: "Americas" },
-    { country: "Argentína", capital: "Buenos Aires", continent: "Americas" },
-    { country: "Bahamy", capital: "Nassau", continent: "Americas" },
-    { country: "Barbados", capital: "Bridgetown", continent: "Americas" },
-    { country: "Belize", capital: "Belmopan", continent: "Americas" },
-    { country: "Bolívia", capital: "Sucre", continent: "Americas" },
-    { country: "Brazília", capital: "Brazília", continent: "Americas" },
-    { country: "Dominika", capital: "Roseau", continent: "Americas" },
-    { country: "Dominikánska republika", capital: "Santo Domingo", continent: "Americas" },
-    { country: "Ekvádor", capital: "Quito", continent: "Americas" },
-    { country: "Grenada", capital: "Saint George's", continent: "Americas" },
-    { country: "Guatemala", capital: "Guatemala", continent: "Americas" },
-    { country: "Guyana", capital: "Georgetown", continent: "Americas" },
-    { country: "Haiti", capital: "Port-au-Prince", continent: "Americas" },
-    { country: "Honduras", capital: "Tegucigalpa", continent: "Americas" },
-    { country: "Čile", capital: "Santiago", continent: "Americas" },
-    { country: "Jamajka", capital: "Kingston", continent: "Americas" },
-    { country: "Kanada", capital: "Ottawa", continent: "Americas" },
-    { country: "Kolumbia", capital: "Bogota", continent: "Americas" },
-    { country: "Kostarika", capital: "San José", continent: "Americas" },
-    { country: "Kuba", capital: "Havana", continent: "Americas" },
-    { country: "Mexiko", capital: "Mexiko", continent: "Americas" },
-    { country: "Nikaragua", capital: "Managua", continent: "Americas" },
-    { country: "Panama", capital: "Panama", continent: "Americas" },
-    { country: "Paraguaj", capital: "Asunción", continent: "Americas" },
-    { country: "Peru", capital: "Lima", continent: "Americas" },
-    { country: "Salvádor", capital: "San Salvador", continent: "Americas" },
-    { country: "Spojené štáty", capital: "Washington, D.C.", continent: "Americas" },
-    { country: "Surinam", capital: "Paramaribo", continent: "Americas" },
-    { country: "Svätá Lucia", capital: "Castries", continent: "Americas" },
-    { country: "Svätý Krištof a Nevis", capital: "Basseterre", continent: "Americas" },
-    { country: "Svätý Vincent a Grenadíny", capital: "Kingstown", continent: "Americas" },
-    { country: "Trinidad a Tobago", capital: "Port of Spain", continent: "Americas" },
-    { country: "Uruguaj", capital: "Montevideo", continent: "Americas" },
-    { country: "Venezuela", capital: "Caracas", continent: "Americas" },
+    { country: "Antigua a Barbuda", capital: "Saint John's", continent: "Americas", code: "ag", en: "Antigua and Barbuda" },
+    { country: "Argentína", capital: "Buenos Aires", continent: "Americas", code: "ar", en: "Argentina" },
+    { country: "Bahamy", capital: "Nassau", continent: "Americas", code: "bs", en: "Bahamas" },
+    { country: "Barbados", capital: "Bridgetown", continent: "Americas", code: "bb", en: "Barbados" },
+    { country: "Belize", capital: "Belmopan", continent: "Americas", code: "bz", en: "Belize" },
+    { country: "Bolívia", capital: "Sucre", continent: "Americas", code: "bo", en: "Bolivia" },
+    { country: "Brazília", capital: "Brazília", continent: "Americas", code: "br", en: "Brazil" },
+    { country: "Dominika", capital: "Roseau", continent: "Americas", code: "dm", en: "Dominica" },
+    { country: "Dominikánska republika", capital: "Santo Domingo", continent: "Americas", code: "do", en: "Dominican Republic" },
+    { country: "Ekvádor", capital: "Quito", continent: "Americas", code: "ec", en: "Ecuador" },
+    { country: "Grenada", capital: "Saint George's", continent: "Americas", code: "gd", en: "Grenada" },
+    { country: "Guatemala", capital: "Guatemala", continent: "Americas", code: "gt", en: "Guatemala" },
+    { country: "Guyana", capital: "Georgetown", continent: "Americas", code: "gy", en: "Guyana" },
+    { country: "Haiti", capital: "Port-au-Prince", continent: "Americas", code: "ht", en: "Haiti" },
+    { country: "Honduras", capital: "Tegucigalpa", continent: "Americas", code: "hn", en: "Honduras" },
+    { country: "Čile", capital: "Santiago", continent: "Americas", code: "cl", en: "Chile" },
+    { country: "Jamajka", capital: "Kingston", continent: "Americas", code: "jm", en: "Jamaica" },
+    { country: "Kanada", capital: "Ottawa", continent: "Americas", code: "ca", en: "Canada" },
+    { country: "Kolumbia", capital: "Bogota", continent: "Americas", code: "co", en: "Colombia" },
+    { country: "Kostarika", capital: "San José", continent: "Americas", code: "cr", en: "Costa Rica" },
+    { country: "Kuba", capital: "Havana", continent: "Americas", code: "cu", en: "Cuba" },
+    { country: "Mexiko", capital: "Mexiko", continent: "Americas", code: "mx", en: "Mexico" },
+    { country: "Nikaragua", capital: "Managua", continent: "Americas", code: "ni", en: "Nicaragua" },
+    { country: "Panama", capital: "Panama", continent: "Americas", code: "pa", en: "Panama" },
+    { country: "Paraguaj", capital: "Asunción", continent: "Americas", code: "py", en: "Paraguay" },
+    { country: "Peru", capital: "Lima", continent: "Americas", code: "pe", en: "Peru" },
+    { country: "Salvádor", capital: "San Salvador", continent: "Americas", code: "sv", en: "El Salvador" },
+    { country: "Spojené štáty", capital: "Washington, D.C.", continent: "Americas", code: "us", en: "United States", alt: ["USA", "US", "America", "United States of America"] },
+    { country: "Surinam", capital: "Paramaribo", continent: "Americas", code: "sr", en: "Suriname" },
+    { country: "Svätá Lucia", capital: "Castries", continent: "Americas", code: "lc", en: "Saint Lucia" },
+    { country: "Svätý Krištof a Nevis", capital: "Basseterre", continent: "Americas", code: "kn", en: "Saint Kitts and Nevis" },
+    { country: "Svätý Vincent a Grenadíny", capital: "Kingstown", continent: "Americas", code: "vc", en: "Saint Vincent and the Grenadines" },
+    { country: "Trinidad a Tobago", capital: "Port of Spain", continent: "Americas", code: "tt", en: "Trinidad and Tobago" },
+    { country: "Uruguaj", capital: "Montevideo", continent: "Americas", code: "uy", en: "Uruguay" },
+    { country: "Venezuela", capital: "Caracas", continent: "Americas", code: "ve", en: "Venezuela" },
 
     // OCEÁNIA
-    { country: "Austrália", capital: "Canberra", continent: "Oceania" },
-    { country: "Fidži", capital: "Suva", continent: "Oceania" },
-    { country: "Kiribati", capital: "Tarawa", continent: "Oceania" },
-    { country: "Marshallove ostrovy", capital: "Majuro", continent: "Oceania" },
-    { country: "Mikronézia", capital: "Palikir", continent: "Oceania" },
-    { country: "Nauru", capital: "Yaren", continent: "Oceania" },
-    { country: "Nový Zéland", capital: "Wellington", continent: "Oceania" },
-    { country: "Palau", capital: "Ngerulmud", continent: "Oceania" },
-    { country: "Papua-Nová Guinea", capital: "Port Moresby", continent: "Oceania" },
-    { country: "Samoa", capital: "Apia", continent: "Oceania" },
-    { country: "Šalamúnove ostrovy", capital: "Honiara", continent: "Oceania" },
-    { country: "Tonga", capital: "Nuku'alofa", continent: "Oceania" },
-    { country: "Tuvalu", capital: "Funafuti", continent: "Oceania" },
-    { country: "Vanuatu", capital: "Port Vila", continent: "Oceania" }
+    { country: "Austrália", capital: "Canberra", continent: "Oceania", code: "au", en: "Australia" },
+    { country: "Fidži", capital: "Suva", continent: "Oceania", code: "fj", en: "Fiji" },
+    { country: "Kiribati", capital: "Tarawa", continent: "Oceania", code: "ki", en: "Kiribati" },
+    { country: "Marshallove ostrovy", capital: "Majuro", continent: "Oceania", code: "mh", en: "Marshall Islands" },
+    { country: "Mikronézia", capital: "Palikir", continent: "Oceania", code: "fm", en: "Micronesia" },
+    { country: "Nauru", capital: "Yaren", continent: "Oceania", code: "nr", en: "Nauru" },
+    { country: "Nový Zéland", capital: "Wellington", continent: "Oceania", code: "nz", en: "New Zealand" },
+    { country: "Palau", capital: "Ngerulmud", continent: "Oceania", code: "pw", en: "Palau" },
+    { country: "Papua-Nová Guinea", capital: "Port Moresby", continent: "Oceania", code: "pg", en: "Papua New Guinea" },
+    { country: "Samoa", capital: "Apia", continent: "Oceania", code: "ws", en: "Samoa" },
+    { country: "Šalamúnove ostrovy", capital: "Honiara", continent: "Oceania", code: "sb", en: "Solomon Islands" },
+    { country: "Tonga", capital: "Nuku'alofa", continent: "Oceania", code: "to", en: "Tonga" },
+    { country: "Tuvalu", capital: "Funafuti", continent: "Oceania", code: "tv", en: "Tuvalu" },
+    { country: "Vanuatu", capital: "Port Vila", continent: "Oceania", code: "vu", en: "Vanuatu" }
 ];
 
 let players = [], currentPlayerIndex = 0, deck = [], currentCountry = null;
 let timerInterval, timeLeft = 50, isAnswerChecked = false, isPaused = false;
+let gameMode = 'capital'; // 'capital' = hádaj hlavné mesto | 'flag' = hádaj štát z vlajky
+
+function selectMode(mode) {
+    gameMode = mode;
+    document.getElementById('mode-capital').classList.toggle('selected', mode === 'capital');
+    document.getElementById('mode-flag').classList.toggle('selected', mode === 'flag');
+}
 
 function generatePlayerInputs() {
     const container = document.getElementById('playerNamesContainer');
@@ -412,7 +481,27 @@ document.getElementById('capitalInput').addEventListener('keypress', function (e
 });
 
 function normalize(str) {
-    return str ? str.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase() : "";
+    return str ? str.normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/[^a-zA-Z0-9]/g, "").toLowerCase() : "";
+}
+
+// Zoznam uznávaných (správnych) odpovedí podľa herného režimu
+function getAcceptedAnswers() {
+    if (gameMode === 'flag') {
+        // Vlajkový režim: uznáme SK názov, EN názov, alternatívy aj hlavné mesto
+        let answers = [currentCountry.country, currentCountry.en, currentCountry.capital];
+        if (currentCountry.alt) answers = answers.concat(currentCountry.alt);
+        return answers;
+    }
+    // Režim hlavného mesta: uznáme len hlavné mesto
+    return [currentCountry.capital];
+}
+
+// Text správnej odpovede zobrazený pri chybe / vzdaní sa / vypršaní času
+function getCorrectAnswerText() {
+    if (gameMode === 'flag') {
+        return `${currentCountry.country} (${currentCountry.en})`;
+    }
+    return currentCountry.capital;
 }
 
 function startGame() {
@@ -432,13 +521,13 @@ function startGame() {
 
 function nextTurn() {
     if (deck.length === 0) return endGame();
-    
+
     // RESET STAVU OTÁZKY
     isAnswerChecked = false;
     isPaused = false;
     currentCountry = deck.pop();
     timeLeft = 50;
-    
+
     // KOMPLETNÝ RESET FEEDBACK BOXU (Odstránenie tried aj textu)
     const feedbackBox = document.getElementById('feedbackBox');
     feedbackBox.style.display = 'none';
@@ -450,16 +539,32 @@ function nextTurn() {
     document.getElementById('pause-overlay').style.display = 'none';
     document.getElementById('game-content').style.opacity = '1';
     document.getElementById('actionButtons').style.display = 'flex';
-    
+    document.getElementById('timerDisplay').classList.remove('warning');
+
     const input = document.getElementById('capitalInput');
     input.disabled = false;
     input.value = '';
+
+    // ZOBRAZENIE OTÁZKY PODĽA REŽIMU
+    const flagImg = document.getElementById('flagImg');
+    const countryName = document.getElementById('countryName');
+    if (gameMode === 'flag') {
+        flagImg.src = `https://flagcdn.com/w320/${currentCountry.code}.png`;
+        flagImg.style.display = 'block';
+        countryName.style.display = 'none';
+        input.placeholder = 'Napíš názov štátu...';
+    } else {
+        flagImg.style.display = 'none';
+        countryName.style.display = 'block';
+        countryName.innerText = currentCountry.country;
+        input.placeholder = 'Napíš hlavné mesto...';
+    }
+
     input.focus();
-    
-    document.getElementById('countryName').innerText = currentCountry.country;
+
     document.getElementById('cardsLeft').innerText = `Zostáva krajín: ${deck.length}`;
     document.getElementById('currentPlayerDisplay').innerText = `Na rade: ${players[currentPlayerIndex].name}`;
-    
+
     updateScoreUI();
     startTimer();
 }
@@ -504,7 +609,7 @@ function checkAnswer() {
 
     const input = document.getElementById('capitalInput');
     const userVal = normalize(input.value);
-    const correctVal = normalize(currentCountry.capital);
+    const acceptedVals = getAcceptedAnswers().map(normalize);
     const box = document.getElementById('feedbackBox');
 
     input.disabled = true;
@@ -513,19 +618,19 @@ function checkAnswer() {
     // 1. Definujeme si premennú pre čas čakania
     let delay;
 
-    if (userVal === correctVal) {
+    if (userVal !== "" && acceptedVals.includes(userVal)) {
         players[currentPlayerIndex].score++;
         box.innerHTML = "✅ SPRÁVNE!";
         box.classList.add('success');
         delay = 2000; // 2 sekundy pre správnu odpoveď
     } else {
-        box.innerHTML = `❌ NESPRÁVNE!<br>Odpoveď: <span class="correct-answer-text">${currentCountry.capital}</span>`;
+        box.innerHTML = `❌ NESPRÁVNE!<br>Odpoveď: <span class="correct-answer-text">${getCorrectAnswerText()}</span>`;
         box.classList.add('error');
         delay = 5000; // 5 sekúnd pre nesprávnu odpoveď
     }
 
     // 2. Použijeme premennú delay v setTimeout
-    setTimeout(switchPlayer, delay); 
+    setTimeout(switchPlayer, delay);
 }
 
 function giveUp() {
@@ -535,7 +640,7 @@ function giveUp() {
     document.getElementById('actionButtons').style.display = 'none';
     document.getElementById('capitalInput').disabled = true;
     const box = document.getElementById('feedbackBox');
-    box.innerHTML = `🏳️ PRESKOČENÉ<br>Odpoveď: <span class="correct-answer-text">${currentCountry.capital}</span>`;
+    box.innerHTML = `🏳️ PRESKOČENÉ<br>Odpoveď: <span class="correct-answer-text">${getCorrectAnswerText()}</span>`;
     box.classList.add('error');
     setTimeout(switchPlayer, 6000);
 }
@@ -547,7 +652,7 @@ function handleTimeout() {
     document.getElementById('actionButtons').style.display = 'none';
     document.getElementById('capitalInput').disabled = true;
     const box = document.getElementById('feedbackBox');
-    box.innerHTML = `⏳ ČAS VYPRŠAL!<br>Odpoveď: <span class="correct-answer-text">${currentCountry.capital}</span>`;
+    box.innerHTML = `⏳ ČAS VYPRŠAL!<br>Odpoveď: <span class="correct-answer-text">${getCorrectAnswerText()}</span>`;
     box.classList.add('error');
     setTimeout(switchPlayer, 6000);
 }
@@ -581,7 +686,7 @@ function endGame() {
     document.getElementById('game-screen').classList.remove('active');
     document.getElementById('end-screen').classList.add('active');
     const sorted = [...players].sort((a,b) => b.score - a.score);
-    document.getElementById('finalScoreList').innerHTML = sorted.map((p, i) => 
+    document.getElementById('finalScoreList').innerHTML = sorted.map((p, i) =>
         `<p style="margin:10px 0; font-size:20px;">${i+1}. ${p.name}: <b>${p.score} bodov</b></p>`
     ).join('');
 }
